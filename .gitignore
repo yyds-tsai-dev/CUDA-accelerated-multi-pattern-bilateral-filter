@@ -1,0 +1,6 @@
+# MacOS specific files
+.DS_Store
+Icon?
+
+# Temporary files
+tmp/
