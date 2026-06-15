@@ -12,6 +12,11 @@ int main(int argc, char** argv) {
   const int width = argc > 1 ? std::atoi(argv[1]) : 32;
   const int height = argc > 2 ? std::atoi(argv[2]) : width;
   const int radius = argc > 3 ? std::atoi(argv[3]) : 3;
+  if (width <= 0 || height <= 0 || radius < 0) {
+    std::cerr << "error: invalid bilateral parameters\n";
+    return 1;
+  }
+
   BilateralParams params{width, height, radius, 9.0f, 900.0f};
 
   std::vector<float> input;
@@ -32,6 +37,7 @@ int main(int argc, char** argv) {
 
   ensure_results_dir();
   std::ostringstream row;
+  row << std::fixed << std::setprecision(6);
   row << "P1," << width << "," << height << "," << radius << "," << checksum << "," << ms;
   append_csv_line("results/p1_scalar.csv", row.str());
   write_pgm("data/p1_scalar_output.pgm", output, width, height);
