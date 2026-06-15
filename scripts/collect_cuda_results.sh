@@ -2,6 +2,7 @@
 set -euo pipefail
 
 mkdir -p results
+rm -f results/p4_cuda.csv results/p5_multi_pattern.csv
 
 make -C P4 clean
 make -C P4 all

@@ -101,13 +101,13 @@ The spatial term preserves locality, while the range term preserves edges by red
 
 ### P5 CUDA
 
-| Width | Height | Patterns | Threads/block | Repeats | Checksum | max_abs_diff | avg_kernel_ms | avg_ms_per_pattern | total_kernel_ms |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1024 | 1024 | 1 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 2 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 4 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 8 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 16 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| Width | Height | Radius | Patterns | Threads/block | Repeats | Checksum | max_abs_diff | avg_kernel_ms | avg_ms_per_pattern | Total kernel ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1024 | 1024 | 3 | 1 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| 1024 | 1024 | 3 | 2 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| 1024 | 1024 | 3 | 4 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| 1024 | 1024 | 3 | 8 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| 1024 | 1024 | 3 | 16 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
 
 ## Discussion And Comparison
 
