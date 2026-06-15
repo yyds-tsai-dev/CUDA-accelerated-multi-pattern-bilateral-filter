@@ -63,6 +63,10 @@ inline size_t validate_bilateral_input(const std::vector<float>& input, const Bi
   if (params.width <= 0 || params.height <= 0 || params.radius < 0) {
     throw std::invalid_argument("invalid bilateral parameters");
   }
+  if (!std::isfinite(params.sigma_s2) || params.sigma_s2 <= 0.0f ||
+      !std::isfinite(params.sigma_r2) || params.sigma_r2 <= 0.0f) {
+    throw std::invalid_argument("invalid bilateral sigma parameters");
+  }
 
   const size_t expected_size = static_cast<size_t>(params.width) * static_cast<size_t>(params.height);
   if (input.size() != expected_size) {
@@ -145,11 +149,19 @@ inline void print_selected_pixels(const char* label, const std::vector<float>& i
 
 inline void write_pgm(const std::string& path, const std::vector<float>& image, int width, int height) {
   std::ofstream out(path, std::ios::binary);
+  if (!out.is_open()) {
+    throw std::runtime_error("failed to open PGM file: " + path);
+  }
+
   out << "P5\n" << width << " " << height << "\n255\n";
   for (float value : image) {
     const int rounded = clamp_int(static_cast<int>(std::lround(value)), 0, 255);
     const unsigned char byte = static_cast<unsigned char>(rounded);
     out.write(reinterpret_cast<const char*>(&byte), 1);
+  }
+  out.flush();
+  if (!out) {
+    throw std::runtime_error("failed to write PGM file: " + path);
   }
 }
 
