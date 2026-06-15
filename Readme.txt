@@ -89,6 +89,6 @@ The test images are deterministic generated grayscale data, so the same dimensio
 
 Correctness And Timing Notes
 - Correctness is reported with checksum values, selected pixel samples, and `max_abs_diff` when a scalar reference exists.
-- P4/P5 CUDA timing uses CUDA events for GPU kernel measurements.
+- P4/P5 CUDA timing uses CUDA events for GPU kernel measurements. P5 reports `total_kernel_ms`, `avg_kernel_ms`, and `avg_ms_per_pattern`.
 - P1/P2/P3 host smoke timing uses C++ `chrono`.
 - gem5 simulated time is separate from real CPU/GPU runtime and should be reported separately from host or CUDA timings.

@@ -26,18 +26,18 @@
 
 ## Algorithm
 
-Arithmetic bilateral filtering computes each output pixel from a weighted neighborhood:
+Arithmetic bilateral-style filtering computes each output pixel from a weighted neighborhood:
 
 ```text
-I_out(p) =
-  sum_{q in N(p)} I(q) * exp(-||p - q||^2 / (2 * sigma_s^2))
-                       * exp(-(I(p) - I(q))^2 / (2 * sigma_r^2))
-  ----------------------------------------------------------------
-  sum_{q in N(p)}      exp(-||p - q||^2 / (2 * sigma_s^2))
-                       * exp(-(I(p) - I(q))^2 / (2 * sigma_r^2))
+spatial = 1 / (1 + (dx*dx + dy*dy) / sigma_s2)
+range   = 1 / (1 + (center - neighbor)^2 / sigma_r2)
+weight  = spatial * range
+num    += neighbor * weight
+den    += weight
+out     = num / den
 ```
 
-The spatial term preserves locality, while the range term preserves edges by reducing the weight of neighboring pixels with very different intensities.
+The arithmetic form avoids `exp()` in RVV/gem5 while keeping the same architectural structure: spatial weighting, range weighting, and per-pixel weighted summation.
 
 ## Implementation Methods
 
@@ -80,34 +80,36 @@ The spatial term preserves locality, while the range term preserves edges by red
 
 ### P1-P3 gem5
 
-| Part | Image | Parameters | Simulated time | Simulated ticks | Notes |
+Final gem5/RVV runs must be completed inside the course container because this host did not have `docker` or `riscv64-linux-gnu-g++` available during final verification.
+
+| Part | Host smoke command | Checksum | max_abs_diff | Host timing field | gem5 status |
 | --- | --- | --- | --- | --- | --- |
-| P1 scalar | TBD | radius TBD | TBD | TBD | Baseline scalar result. |
-| P2 RVV reduction | TBD | radius TBD | TBD | TBD | Compare speedup and `max_abs_diff` against P1. |
-| P3 SIMD-like RVV | TBD | radius TBD, k TBD | TBD | TBD | Compare vector grouping effect and `max_abs_diff` against P1. |
+| P1 scalar | `./P1/main 32 32 3` | 6238116.209287 | N/A | `host_ms=0.241593` | Blocked on missing Docker/RISC-V toolchain. |
+| P2 RVV reduction fallback | `./P2/main 32 32` | 6238116.209287 | 0.000000 | `host_fallback_ms=0.274421` | Blocked on missing Docker/RISC-V toolchain. |
+| P3 SIMD-like RVV fallback | `./P3/main 32 32 4` | 6238116.209287 | 0.000000 | `host_fallback_ms=0.178394` | Blocked on missing Docker/RISC-V toolchain. |
 
 ### P4 CUDA
 
 | Width | Height | Radius | Block | Mode | Repeats | Checksum | max_abs_diff | avg_kernel_ms |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 512 | 512 | 3 | 8x8 | global | 5 | TBD | TBD | TBD |
-| 512 | 512 | 3 | 8x8 | shared | 5 | TBD | TBD | TBD |
-| 512 | 512 | 3 | 16x16 | global | 5 | TBD | TBD | TBD |
-| 512 | 512 | 3 | 16x16 | shared | 5 | TBD | TBD | TBD |
-| 1024 | 1024 | 5 | 16x16 | global | 5 | TBD | TBD | TBD |
-| 1024 | 1024 | 5 | 16x16 | shared | 5 | TBD | TBD | TBD |
-| 1024 | 1024 | 5 | 32x8 | global | 5 | TBD | TBD | TBD |
-| 1024 | 1024 | 5 | 32x8 | shared | 5 | TBD | TBD | TBD |
+| 512 | 512 | 3 | 8x8 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.115885 |
+| 512 | 512 | 3 | 8x8 | shared | 5 | 1637512415.620656 | 0.000061 | 0.109459 |
+| 512 | 512 | 3 | 16x16 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.112691 |
+| 512 | 512 | 3 | 16x16 | shared | 5 | 1637512415.620656 | 0.000061 | 0.107827 |
+| 1024 | 1024 | 5 | 16x16 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.774765 |
+| 1024 | 1024 | 5 | 16x16 | shared | 5 | 6550815804.927626 | 0.000076 | 0.721024 |
+| 1024 | 1024 | 5 | 32x8 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.776499 |
+| 1024 | 1024 | 5 | 32x8 | shared | 5 | 6550815804.927626 | 0.000076 | 0.720166 |
 
 ### P5 CUDA
 
 | Width | Height | Radius | Patterns | Threads/block | Repeats | Checksum | max_abs_diff | avg_kernel_ms | avg_ms_per_pattern | Total kernel ms |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1024 | 1024 | 3 | 1 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 3 | 2 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 3 | 4 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 3 | 8 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
-| 1024 | 1024 | 3 | 16 | 256 | 5 | TBD | TBD | TBD | TBD | TBD |
+| 1024 | 1024 | 3 | 1 | 256 | 5 | 6550831709.315681 | 0.000061 | 0.350208 | 0.350208 | 1.751040 |
+| 1024 | 1024 | 3 | 2 | 256 | 5 | 13101845648.158327 | 0.000092 | 0.666458 | 0.333229 | 3.332288 |
+| 1024 | 1024 | 3 | 4 | 256 | 5 | 26203780400.305031 | 0.000092 | 1.309933 | 0.327483 | 6.549664 |
+| 1024 | 1024 | 3 | 8 | 256 | 5 | 52407367705.564903 | 0.000092 | 2.614022 | 0.326753 | 13.070112 |
+| 1024 | 1024 | 3 | 16 | 256 | 5 | 104815167996.359741 | 0.000092 | 5.180909 | 0.323807 | 25.904545 |
 
 ## Discussion And Comparison
 
