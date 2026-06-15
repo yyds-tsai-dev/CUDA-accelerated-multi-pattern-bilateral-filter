@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -58,7 +59,25 @@ inline float bilateral_weight(int dx, int dy, float center, float neighbor, cons
   return spatial_weight(dx, dy, params.sigma_s2) * range_weight(center, neighbor, params.sigma_r2);
 }
 
+inline size_t validate_bilateral_input(const std::vector<float>& input, const BilateralParams& params) {
+  if (params.width <= 0 || params.height <= 0 || params.radius < 0) {
+    throw std::invalid_argument("invalid bilateral parameters");
+  }
+
+  const size_t expected_size = static_cast<size_t>(params.width) * static_cast<size_t>(params.height);
+  if (input.size() != expected_size) {
+    throw std::invalid_argument("input size does not match bilateral parameters");
+  }
+
+  return expected_size;
+}
+
 inline float scalar_filter_one(const std::vector<float>& input, int x, int y, const BilateralParams& params) {
+  validate_bilateral_input(input, params);
+  if (x < 0 || x >= params.width || y < 0 || y >= params.height) {
+    throw std::invalid_argument("filter coordinates out of range");
+  }
+
   const int width = params.width;
   const int height = params.height;
   const float center = input[static_cast<size_t>(y) * width + x];
@@ -82,7 +101,8 @@ inline float scalar_filter_one(const std::vector<float>& input, int x, int y, co
 inline void scalar_bilateral_filter(const std::vector<float>& input,
                                     std::vector<float>& output,
                                     const BilateralParams& params) {
-  output.assign(input.size(), 0.0f);
+  const size_t expected_size = validate_bilateral_input(input, params);
+  output.assign(expected_size, 0.0f);
   for (int y = 0; y < params.height; ++y) {
     for (int x = 0; x < params.width; ++x) {
       output[static_cast<size_t>(y) * params.width + x] = scalar_filter_one(input, x, y, params);
@@ -99,6 +119,10 @@ inline double checksum_image(const std::vector<float>& image) {
 }
 
 inline float max_abs_diff(const std::vector<float>& a, const std::vector<float>& b) {
+  if (a.size() != b.size()) {
+    throw std::invalid_argument("image sizes do not match");
+  }
+
   float max_diff = 0.0f;
   for (size_t i = 0; i < a.size(); ++i) {
     max_diff = std::max(max_diff, std::fabs(a[i] - b[i]));
