@@ -81,6 +81,15 @@ static bool valid_allocation_size(int width, int height, int patterns) {
   return count <= max_size / sizeof(float);
 }
 
+static bool valid_cuda_grid_y(int patterns) {
+  int device = 0;
+  CUDA_CHECK(cudaGetDevice(&device));
+
+  cudaDeviceProp prop{};
+  CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+  return patterns <= prop.maxGridSize[1];
+}
+
 static void generate_patterns(std::vector<float>& images, int width, int height, int patterns) {
   const size_t image_size = static_cast<size_t>(width) * static_cast<size_t>(height);
   images.resize(image_size * static_cast<size_t>(patterns));
@@ -125,6 +134,10 @@ int main(int argc, char** argv) {
   if (width <= 0 || height <= 0 || patterns <= 0 || threads_per_block <= 0 ||
       threads_per_block > 1024 || repeats <= 0 ||
       !valid_allocation_size(width, height, patterns)) {
+    std::cerr << "error: invalid bilateral parameters\n";
+    return 1;
+  }
+  if (!valid_cuda_grid_y(patterns)) {
     std::cerr << "error: invalid bilateral parameters\n";
     return 1;
   }
@@ -182,6 +195,8 @@ int main(int argc, char** argv) {
             << " repeats=" << repeats << "\n";
   std::cout << "checksum=" << std::fixed << std::setprecision(6) << checksum << "\n";
   std::cout << "max_abs_diff=" << std::fixed << std::setprecision(6) << diff << "\n";
+  std::cout << "total_kernel_ms=" << std::fixed << std::setprecision(6) << total_kernel_ms
+            << "\n";
   std::cout << "avg_kernel_ms=" << std::fixed << std::setprecision(6) << avg_kernel_ms << "\n";
   std::cout << "avg_ms_per_pattern=" << std::fixed << std::setprecision(6) << avg_ms_per_pattern
             << "\n";
@@ -191,7 +206,7 @@ int main(int argc, char** argv) {
   row << std::fixed << std::setprecision(6);
   row << "P5," << width << "," << height << "," << radius << "," << patterns << ","
       << threads_per_block << "," << repeats << "," << checksum << "," << diff << ","
-      << avg_kernel_ms << "," << avg_ms_per_pattern;
+      << avg_kernel_ms << "," << avg_ms_per_pattern << "," << total_kernel_ms;
   append_csv_line("results/p5_multi_pattern.csv", row.str());
 
   return diff <= 0.05f ? 0 : 2;
