@@ -38,22 +38,44 @@ static void simd_like_filter_rvv(const std::vector<float>& input,
                                  const BilateralParams& params,
                                  int k) {
 #ifdef __riscv_vector
-  scalar_bilateral_filter(input, output, params);
-
+  const size_t expected_size = validate_bilateral_input(input, params);
+  output.assign(expected_size, 0.0f);
   const int width = params.width;
   const int height = params.height;
   const int radius = params.radius;
   const std::ptrdiff_t row_stride_bytes = static_cast<std::ptrdiff_t>(width * sizeof(float));
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      if (x < radius || x >= width - radius || y < radius || y >= height - radius) {
+        output[static_cast<size_t>(y) * width + x] = scalar_filter_one(input, x, y, params);
+      }
+    }
+  }
 
   if (width <= 2 * radius || height <= 2 * radius) {
     return;
   }
 
   for (int x = radius; x < width - radius; ++x) {
-    int y = radius;
-    while (y < height - radius) {
-      const int lane_limit = std::min(k, height - radius - y);
-      const size_t vl = __riscv_vsetvl_e32m1(static_cast<size_t>(lane_limit));
+    for (int y = radius; y < height - radius; y += k) {
+      const int remaining = height - radius - y;
+      if (remaining < k) {
+        for (int lane = 0; lane < remaining; ++lane) {
+          const int yy = y + lane;
+          output[static_cast<size_t>(yy) * width + x] = scalar_filter_one(input, x, yy, params);
+        }
+        continue;
+      }
+
+      const size_t vl = __riscv_vsetvl_e32m1(static_cast<size_t>(k));
+      if (vl == 0) {
+        for (int lane = 0; lane < k; ++lane) {
+          const int yy = y + lane;
+          output[static_cast<size_t>(yy) * width + x] = scalar_filter_one(input, x, yy, params);
+        }
+        continue;
+      }
 
       const float* center_base = input.data() + static_cast<size_t>(y) * width + x;
       vfloat32m1_t center = __riscv_vlse32_v_f32m1(center_base, row_stride_bytes, vl);
@@ -82,7 +104,10 @@ static void simd_like_filter_rvv(const std::vector<float>& input,
       float* out_base = output.data() + static_cast<size_t>(y) * width + x;
       __riscv_vsse32_v_f32m1(out_base, row_stride_bytes, result, vl);
 
-      y += static_cast<int>(vl);
+      for (int lane = static_cast<int>(vl); lane < k; ++lane) {
+        const int yy = y + lane;
+        output[static_cast<size_t>(yy) * width + x] = scalar_filter_one(input, x, yy, params);
+      }
     }
   }
 #else
