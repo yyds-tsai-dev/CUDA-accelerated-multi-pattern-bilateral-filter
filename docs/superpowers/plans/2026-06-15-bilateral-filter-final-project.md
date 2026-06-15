@@ -53,6 +53,11 @@ Do not modify these files:
 - Keep CUDA sizes at 512x512 and 1024x1024 with radius 3 and 5 for P4.
 - Keep P5 at 1024x1024, radius 3, pattern counts 1, 2, 4, 8, and 16.
 - Use `-arch=sm_70` for the detected Tesla V100 host GPU.
+- Makefiles may be changed for extra source files, headers, and compile flags.
+- gem5 cache size, associativity, and block-size parameters may be changed only when the report explicitly discusses the comparison; do not use `AtomicSimpleCPU`.
+- GPU kernel timing must use CUDA events from `cuda_runtime.h`; if `chrono` is used for a host-side elapsed time, call `cudaDeviceSynchronize()` before reading the stop time.
+- P4 and P5 CUDA measurements must run five timed repeats per setting and report the average.
+- Test-data files have no course-imposed format or size restriction; generated data is valid when `Readme.txt` documents the verification method.
 
 ---
 
@@ -1147,7 +1152,8 @@ static float run_kernel(bool shared,
                         const std::vector<float>& input,
                         std::vector<float>& output,
                         const BilateralParams& params,
-                        dim3 block) {
+                        dim3 block,
+                        int repeats) {
   const size_t bytes = input.size() * sizeof(float);
   float* d_input = nullptr;
   float* d_output = nullptr;
@@ -1175,20 +1181,27 @@ static float run_kernel(bool shared,
   const dim3 grid((params.width + block.x - 1) / block.x,
                   (params.height + block.y - 1) / block.y);
 
-  CUDA_CHECK(cudaEventRecord(kernel_start));
-  if (shared) {
-    const int tile_w = static_cast<int>(block.x) + 2 * params.radius;
-    const int tile_h = static_cast<int>(block.y) + 2 * params.radius;
-    const size_t shared_bytes = static_cast<size_t>(tile_w) * tile_h * sizeof(float);
-    bilateral_shared_kernel<<<grid, block, shared_bytes>>>(d_input, d_output, params.width, params.height,
-                                                           params.radius, params.sigma_s2, params.sigma_r2);
-  } else {
-    bilateral_naive_kernel<<<grid, block>>>(d_input, d_output, params.width, params.height,
-                                            params.radius, params.sigma_s2, params.sigma_r2);
+  float kernel_total_ms = 0.0f;
+  for (int repeat = 0; repeat < repeats; ++repeat) {
+    CUDA_CHECK(cudaEventRecord(kernel_start));
+    if (shared) {
+      const int tile_w = static_cast<int>(block.x) + 2 * params.radius;
+      const int tile_h = static_cast<int>(block.y) + 2 * params.radius;
+      const size_t shared_bytes = static_cast<size_t>(tile_w) * tile_h * sizeof(float);
+      bilateral_shared_kernel<<<grid, block, shared_bytes>>>(d_input, d_output, params.width, params.height,
+                                                             params.radius, params.sigma_s2, params.sigma_r2);
+    } else {
+      bilateral_naive_kernel<<<grid, block>>>(d_input, d_output, params.width, params.height,
+                                              params.radius, params.sigma_s2, params.sigma_r2);
+    }
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaEventRecord(kernel_stop));
+    CUDA_CHECK(cudaEventSynchronize(kernel_stop));
+    float one_kernel_ms = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&one_kernel_ms, kernel_start, kernel_stop));
+    kernel_total_ms += one_kernel_ms;
   }
-  CUDA_CHECK(cudaGetLastError());
-  CUDA_CHECK(cudaEventRecord(kernel_stop));
-  CUDA_CHECK(cudaEventSynchronize(kernel_stop));
+  const float avg_kernel_ms = kernel_total_ms / static_cast<float>(repeats);
 
   CUDA_CHECK(cudaEventRecord(d2h_start));
   output.resize(input.size());
@@ -1197,13 +1210,12 @@ static float run_kernel(bool shared,
   CUDA_CHECK(cudaEventSynchronize(d2h_stop));
 
   float h2d_ms = 0.0f;
-  float kernel_ms = 0.0f;
   float d2h_ms = 0.0f;
   CUDA_CHECK(cudaEventElapsedTime(&h2d_ms, h2d_start, h2d_stop));
-  CUDA_CHECK(cudaEventElapsedTime(&kernel_ms, kernel_start, kernel_stop));
   CUDA_CHECK(cudaEventElapsedTime(&d2h_ms, d2h_start, d2h_stop));
 
-  std::cout << "h2d_ms=" << h2d_ms << " kernel_ms=" << kernel_ms << " d2h_ms=" << d2h_ms << "\n";
+  std::cout << "h2d_ms=" << h2d_ms << " avg_kernel_ms=" << avg_kernel_ms
+            << " d2h_ms=" << d2h_ms << " repeats=" << repeats << "\n";
 
   CUDA_CHECK(cudaEventDestroy(h2d_start));
   CUDA_CHECK(cudaEventDestroy(h2d_stop));
@@ -1213,7 +1225,7 @@ static float run_kernel(bool shared,
   CUDA_CHECK(cudaEventDestroy(d2h_stop));
   CUDA_CHECK(cudaFree(d_input));
   CUDA_CHECK(cudaFree(d_output));
-  return kernel_ms;
+  return avg_kernel_ms;
 }
 
 int main(int argc, char** argv) {
@@ -1223,6 +1235,7 @@ int main(int argc, char** argv) {
   const int block_x = argc > 4 ? std::atoi(argv[4]) : 16;
   const int block_y = argc > 5 ? std::atoi(argv[5]) : 16;
   const bool shared = argc > 6 ? std::atoi(argv[6]) != 0 : false;
+  const int repeats = argc > 7 ? std::atoi(argv[7]) : 5;
   BilateralParams params{width, height, radius, 9.0f, 900.0f};
 
   std::vector<float> input;
@@ -1231,12 +1244,12 @@ int main(int argc, char** argv) {
   generate_image(input, width, height, 0);
   scalar_bilateral_filter(input, reference, params);
 
-  const float kernel_ms = run_kernel(shared, input, output, params, dim3(block_x, block_y));
+  const float avg_kernel_ms = run_kernel(shared, input, output, params, dim3(block_x, block_y), repeats);
   const double checksum = checksum_image(output);
   const float diff = max_abs_diff(reference, output);
   std::cout << "part=P4 cuda_simt variant=" << (shared ? "shared" : "naive") << "\n";
   std::cout << "width=" << width << " height=" << height << " radius=" << radius
-            << " block=" << block_x << "x" << block_y << "\n";
+            << " block=" << block_x << "x" << block_y << " repeats=" << repeats << "\n";
   std::cout << "checksum=" << std::fixed << std::setprecision(6) << checksum << "\n";
   std::cout << "max_abs_diff=" << std::fixed << std::setprecision(6) << diff << "\n";
   print_selected_pixels("selected", output, width, height);
@@ -1244,7 +1257,8 @@ int main(int argc, char** argv) {
   ensure_results_dir();
   std::ostringstream row;
   row << "P4," << (shared ? "shared" : "naive") << "," << width << "," << height << ","
-      << radius << "," << block_x << "x" << block_y << "," << checksum << "," << diff << "," << kernel_ms;
+      << radius << "," << block_x << "x" << block_y << "," << repeats << ","
+      << checksum << "," << diff << "," << avg_kernel_ms;
   append_csv_line("results/p4_cuda.csv", row.str());
   return diff <= 0.05f ? 0 : 2;
 }
@@ -1266,16 +1280,16 @@ all:
 	$(NVCC) $(NVCCFLAGS) main.cu -o $(TARGET)
 
 run: all
-	./$(TARGET) 512 512 3 16 16 0
-	./$(TARGET) 512 512 3 16 16 1
-	./$(TARGET) 1024 1024 5 16 16 0
-	./$(TARGET) 1024 1024 5 16 16 1
+	./$(TARGET) 512 512 3 16 16 0 5
+	./$(TARGET) 512 512 3 16 16 1 5
+	./$(TARGET) 1024 1024 5 16 16 0 5
+	./$(TARGET) 1024 1024 5 16 16 1 5
 
 ptx:
 	$(NVCC) --ptx -O2 -std=c++17 -arch=$(ARCH) main.cu -o main.ptx
 
 profile: all
-	ncu --set basic ./$(TARGET) 1024 1024 3 16 16 1
+	ncu --set basic ./$(TARGET) 1024 1024 3 16 16 1 5
 
 clean:
 	rm -f $(TARGET) main.ptx
@@ -1297,17 +1311,17 @@ Expected: PTXAS prints register information and `P4/main` exists.
 Run:
 
 ```bash
-./P4/main 512 512 3 8 8 0
-./P4/main 512 512 3 8 8 1
-./P4/main 512 512 3 16 16 0
-./P4/main 512 512 3 16 16 1
-./P4/main 1024 1024 5 16 16 0
-./P4/main 1024 1024 5 16 16 1
-./P4/main 1024 1024 5 32 8 0
-./P4/main 1024 1024 5 32 8 1
+./P4/main 512 512 3 8 8 0 5
+./P4/main 512 512 3 8 8 1 5
+./P4/main 512 512 3 16 16 0 5
+./P4/main 512 512 3 16 16 1 5
+./P4/main 1024 1024 5 16 16 0 5
+./P4/main 1024 1024 5 16 16 1 5
+./P4/main 1024 1024 5 32 8 0 5
+./P4/main 1024 1024 5 32 8 1 5
 ```
 
-Expected: every run prints `part=P4 cuda_simt`, `max_abs_diff` below `0.050000`, and `kernel_ms`.
+Expected: every run prints `part=P4 cuda_simt`, `max_abs_diff` below `0.050000`, and `avg_kernel_ms`.
 
 - [ ] **Step 5: Generate PTX**
 
@@ -1324,7 +1338,7 @@ Expected: `P4/main.ptx` exists and includes global load instructions and shared-
 Run:
 
 ```bash
-ncu --set basic ./P4/main 1024 1024 3 16 16 1
+ncu --set basic ./P4/main 1024 1024 3 16 16 1 5
 ```
 
 Expected: `ncu` reports SM utilization, occupancy, active warps, and memory throughput. If profiling permission blocks counters, record the permission error text in `results/p4_ncu_permission.txt`.
@@ -1450,6 +1464,7 @@ int main(int argc, char** argv) {
   const int height = argc > 2 ? std::atoi(argv[2]) : width;
   const int patterns = argc > 3 ? std::atoi(argv[3]) : 4;
   const int threads_per_block = argc > 4 ? std::atoi(argv[4]) : 256;
+  const int repeats = argc > 5 ? std::atoi(argv[5]) : 5;
   BilateralParams params{width, height, 3, 9.0f, 900.0f};
 
   std::vector<float> input;
@@ -1474,30 +1489,36 @@ int main(int argc, char** argv) {
   dim3 block(threads_per_block);
   dim3 grid((width * height + block.x - 1) / block.x, patterns);
 
-  CUDA_CHECK(cudaEventRecord(start));
-  bilateral_multi_pattern_kernel<<<grid, block>>>(d_input, d_output, width, height, patterns,
-                                                  params.radius, params.sigma_s2, params.sigma_r2);
-  CUDA_CHECK(cudaGetLastError());
-  CUDA_CHECK(cudaEventRecord(stop));
-  CUDA_CHECK(cudaEventSynchronize(stop));
-  float kernel_ms = 0.0f;
-  CUDA_CHECK(cudaEventElapsedTime(&kernel_ms, start, stop));
+  float kernel_total_ms = 0.0f;
+  for (int repeat = 0; repeat < repeats; ++repeat) {
+    CUDA_CHECK(cudaEventRecord(start));
+    bilateral_multi_pattern_kernel<<<grid, block>>>(d_input, d_output, width, height, patterns,
+                                                    params.radius, params.sigma_s2, params.sigma_r2);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaEventRecord(stop));
+    CUDA_CHECK(cudaEventSynchronize(stop));
+    float one_kernel_ms = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&one_kernel_ms, start, stop));
+    kernel_total_ms += one_kernel_ms;
+  }
+  const float avg_kernel_ms = kernel_total_ms / static_cast<float>(repeats);
 
   CUDA_CHECK(cudaMemcpy(output.data(), d_output, bytes, cudaMemcpyDeviceToHost));
   const double checksum = checksum_image(output);
   const float diff = max_abs_diff(reference, output);
   std::cout << "part=P5 multi_pattern_cuda\n";
   std::cout << "width=" << width << " height=" << height << " radius=3 patterns=" << patterns
-            << " threads_per_block=" << threads_per_block << "\n";
+            << " threads_per_block=" << threads_per_block << " repeats=" << repeats << "\n";
   std::cout << "checksum=" << std::fixed << std::setprecision(6) << checksum << "\n";
   std::cout << "max_abs_diff=" << std::fixed << std::setprecision(6) << diff << "\n";
-  std::cout << "kernel_ms=" << std::fixed << std::setprecision(6) << kernel_ms << "\n";
-  std::cout << "ms_per_pattern=" << std::fixed << std::setprecision(6) << (kernel_ms / patterns) << "\n";
+  std::cout << "avg_kernel_ms=" << std::fixed << std::setprecision(6) << avg_kernel_ms << "\n";
+  std::cout << "avg_ms_per_pattern=" << std::fixed << std::setprecision(6) << (avg_kernel_ms / patterns) << "\n";
 
   ensure_results_dir();
   std::ostringstream row;
   row << "P5," << width << "," << height << ",3," << patterns << "," << threads_per_block
-      << "," << checksum << "," << diff << "," << kernel_ms << "," << (kernel_ms / patterns);
+      << "," << repeats << "," << checksum << "," << diff << ","
+      << avg_kernel_ms << "," << (avg_kernel_ms / patterns);
   append_csv_line("results/p5_multi_pattern.csv", row.str());
 
   CUDA_CHECK(cudaEventDestroy(start));
@@ -1524,17 +1545,17 @@ all:
 	$(NVCC) $(NVCCFLAGS) main.cu -o $(TARGET)
 
 run: all
-	./$(TARGET) 1024 1024 1 256
-	./$(TARGET) 1024 1024 2 256
-	./$(TARGET) 1024 1024 4 256
-	./$(TARGET) 1024 1024 8 256
-	./$(TARGET) 1024 1024 16 256
+	./$(TARGET) 1024 1024 1 256 5
+	./$(TARGET) 1024 1024 2 256 5
+	./$(TARGET) 1024 1024 4 256 5
+	./$(TARGET) 1024 1024 8 256 5
+	./$(TARGET) 1024 1024 16 256 5
 
 ptx:
 	$(NVCC) --ptx -O2 -std=c++17 -arch=$(ARCH) main.cu -o main.ptx
 
 profile: all
-	ncu --set basic ./$(TARGET) 1024 1024 16 256
+	ncu --set basic ./$(TARGET) 1024 1024 16 256 5
 
 clean:
 	rm -f $(TARGET) main.ptx
@@ -1556,14 +1577,14 @@ Expected: `P5/main` exists.
 Run:
 
 ```bash
-./P5/main 1024 1024 1 256
-./P5/main 1024 1024 2 256
-./P5/main 1024 1024 4 256
-./P5/main 1024 1024 8 256
-./P5/main 1024 1024 16 256
+./P5/main 1024 1024 1 256 5
+./P5/main 1024 1024 2 256 5
+./P5/main 1024 1024 4 256 5
+./P5/main 1024 1024 8 256 5
+./P5/main 1024 1024 16 256 5
 ```
 
-Expected: every run prints `part=P5 multi_pattern_cuda`, `max_abs_diff` below `0.050000`, `kernel_ms`, and `ms_per_pattern`.
+Expected: every run prints `part=P5 multi_pattern_cuda`, `max_abs_diff` below `0.050000`, `avg_kernel_ms`, and `avg_ms_per_pattern`.
 
 - [ ] **Step 5: Generate PTX and profile**
 
@@ -1571,7 +1592,7 @@ Run:
 
 ```bash
 make -C P5 ptx
-ncu --set basic ./P5/main 1024 1024 16 256
+ncu --set basic ./P5/main 1024 1024 16 256 5
 ```
 
 Expected: `P5/main.ptx` exists. `ncu` reports GPU metrics or prints a permission error that must be saved into `results/p5_ncu_permission.txt`.
@@ -1606,22 +1627,22 @@ mkdir -p results
 
 make -C P4 clean
 make -C P4 all
-./P4/main 512 512 3 8 8 0
-./P4/main 512 512 3 8 8 1
-./P4/main 512 512 3 16 16 0
-./P4/main 512 512 3 16 16 1
-./P4/main 1024 1024 5 16 16 0
-./P4/main 1024 1024 5 16 16 1
-./P4/main 1024 1024 5 32 8 0
-./P4/main 1024 1024 5 32 8 1
+./P4/main 512 512 3 8 8 0 5
+./P4/main 512 512 3 8 8 1 5
+./P4/main 512 512 3 16 16 0 5
+./P4/main 512 512 3 16 16 1 5
+./P4/main 1024 1024 5 16 16 0 5
+./P4/main 1024 1024 5 16 16 1 5
+./P4/main 1024 1024 5 32 8 0 5
+./P4/main 1024 1024 5 32 8 1 5
 
 make -C P5 clean
 make -C P5 all
-./P5/main 1024 1024 1 256
-./P5/main 1024 1024 2 256
-./P5/main 1024 1024 4 256
-./P5/main 1024 1024 8 256
-./P5/main 1024 1024 16 256
+./P5/main 1024 1024 1 256 5
+./P5/main 1024 1024 2 256 5
+./P5/main 1024 1024 4 256 5
+./P5/main 1024 1024 8 256 5
+./P5/main 1024 1024 16 256 5
 
 echo "CUDA result CSV files:"
 ls -lh results/p4_cuda.csv results/p5_multi_pattern.csv
@@ -1701,14 +1722,14 @@ make -C P3 riscv
 P4 CUDA:
 make -C P4 clean
 make -C P4 all
-./P4/main 512 512 3 16 16 0
-./P4/main 512 512 3 16 16 1
+./P4/main 512 512 3 16 16 0 5
+./P4/main 512 512 3 16 16 1 5
 
 P5 CUDA:
 make -C P5 clean
 make -C P5 all
-./P5/main 1024 1024 1 256
-./P5/main 1024 1024 16 256
+./P5/main 1024 1024 1 256 5
+./P5/main 1024 1024 16 256 5
 
 Collect CUDA results:
 ./scripts/collect_cuda_results.sh
@@ -1721,8 +1742,14 @@ Generated outputs:
 - results/p5_multi_pattern.csv
 - data/*.pgm visualization images
 
+Test data:
+The required tests use deterministic generated grayscale images, so no external dataset is needed for correctness. Additional image files may be included under data/ when their source, size, and usage are documented in this Readme and the report.
+
 Correctness:
 Every executable prints checksum, selected pixels, and max_abs_diff when a reference comparison is available.
+
+Timing:
+P4 and P5 use CUDA events from cuda_runtime.h and report five-run average kernel time. CPU host smoke tests use chrono. gem5 simulated time must be reported separately from real CPU/GPU runtime.
 ```
 
 - [ ] **Step 4: Create report outline**
@@ -1739,6 +1766,8 @@ Create `report/Report_outline.md`:
 - CUDA version: CUDA 12.9 observed during planning; confirm with `nvcc --version`
 - gem5 Docker image: `weisheng505/gem5-rvv-image:v1`
 - CUDA environment: host CUDA or `weisheng505/cuda-env:v1`, whichever is used for the final measurements
+- gem5 CPU model: keep the course default and do not use `AtomicSimpleCPU`
+- gem5 cache parameters: list cache size, associativity, and block size when they are changed for analysis
 
 ## 2. File Structure
 
@@ -1792,13 +1821,13 @@ One thread computes one output pixel. Compare global-memory direct reads with sh
 
 ### P4 CUDA
 
-| Variant | Size | Radius | Block | Kernel ms | H2D ms | D2H ms | Max diff |
-|---------|------|--------|-------|-----------|--------|--------|----------|
+| Variant | Size | Radius | Block | Repeats | Avg kernel ms | H2D ms | D2H ms | Max diff |
+|---------|------|--------|-------|---------|---------------|--------|--------|----------|
 
 ### P5 CUDA
 
-| Patterns | Size | Radius | Block | Kernel ms | ms per pattern | Max diff |
-|----------|------|--------|-------|-----------|----------------|----------|
+| Patterns | Size | Radius | Threads/block | Repeats | Avg kernel ms | Avg ms per pattern | Max diff |
+|----------|------|--------|---------------|---------|---------------|--------------------|----------|
 
 ## 6. Discussion And Comparison
 
@@ -1866,8 +1895,8 @@ Expected: all commands exit 0.
 Run:
 
 ```bash
-make -C P4 clean && make -C P4 all && ./P4/main 512 512 3 16 16 0 && ./P4/main 512 512 3 16 16 1
-make -C P5 clean && make -C P5 all && ./P5/main 1024 1024 1 256
+make -C P4 clean && make -C P4 all && ./P4/main 512 512 3 16 16 0 5 && ./P4/main 512 512 3 16 16 1 5
+make -C P5 clean && make -C P5 all && ./P5/main 1024 1024 1 256 5
 ```
 
 Expected: all commands exit 0 and print `max_abs_diff` within thresholds.

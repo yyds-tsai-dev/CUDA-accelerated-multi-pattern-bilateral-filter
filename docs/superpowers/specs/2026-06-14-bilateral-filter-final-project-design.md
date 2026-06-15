@@ -51,6 +51,8 @@ The default experiment parameters are:
 
 The project will not depend on external image libraries for the correctness path. PGM output is a non-required visualization helper and will not be used as the primary validation mechanism.
 
+TA clarification: there is no fixed test-data format, size, or content restriction. The project will use deterministic generated grayscale patterns as the required test data and will document the verification method in `Readme.txt`. If external image files are added later, they must live under `data/` and be described in `Readme.txt` and the report.
+
 ## Architecture
 
 Shared code will live under `common/` and define image generation, clamp helpers, arithmetic weight computation, checksum utilities, and result comparison. Each course part will be independently buildable so report data can be collected part by part.
@@ -91,6 +93,8 @@ In this repository, source work can use the same top-level folders before final 
 
 P1 implements the reference scalar version in C/C++. It runs the full nested loop for each output pixel and records output checksum plus a small set of selected pixels. It will first be checked with host `g++`, then compiled with the course RISC-V toolchain and executed in gem5.
 
+TA clarification: Makefiles may be changed for extra headers, source files, and compiler flags. gem5 cache size, associativity, and block-size parameters may be adjusted when the report explicitly discusses the comparison. CPU model settings should avoid `AtomicSimpleCPU`.
+
 Report metrics:
 
 - `simSeconds`
@@ -109,7 +113,7 @@ This part must use RVV reduction operations. The report will compare instruction
 
 P3 computes `k` output pixels at the same time. RVV lanes correspond to different output pixels, and each lane accumulates its own scalar-like window sum. This is across-output-pixel SIMD rather than within-one-pixel reduction.
 
-This part must not use vector reduction operations. It will use strided memory access for across-pixel lanes and test `k` values 2, 4, and 8. The report will explain the difference between P2's within-window reduction and P3's across-pixel parallelism.
+This part must not use vector reduction operations. It will use strided memory access for across-pixel lanes and test `k` values 2, 4, and 8. The report will explain the difference between P2's within-window reduction and P3's across-pixel parallelism. TA clarification confirms this interpretation: Part 3 places `k` independent loop iterations into one vector, so reduction is not applicable.
 
 ### P4 CUDA SIMT
 
@@ -124,11 +128,13 @@ The shared-memory comparison directly supports the PDF prompts about memory acce
 
 Report metrics:
 
-- CUDA event kernel time
+- CUDA event kernel time from `cuda_runtime.h`
 - H2D/D2H timing for GPU total-runtime measurements
 - PTXAS registers per thread
 - shared memory per block
 - `ncu --set basic` metrics when profiling permission allows it
+
+GPU timing will use CUDA events and event synchronization. If `chrono` is used for a CPU baseline or an end-to-end host measurement, the timed region must synchronize the CUDA work before reading the stop time. Each CUDA setting will be measured across five runs and reported as an average.
 
 On the current host, the detected GPU is Tesla V100-SXM2-32GB, so the expected CUDA target is `-arch=sm_70`.
 
@@ -142,6 +148,8 @@ grid.y = number of patterns
 ```
 
 Patterns will be deterministic noisy variants of the same base image. Batch sizes will include 1, 2, 4, 8, and 16. The report will analyze whether throughput scales linearly and how more patterns affect occupancy, latency hiding, and utilization.
+
+P5 timing follows the same CUDA timing policy as P4: use CUDA events from `cuda_runtime.h`, synchronize recorded events before reading elapsed time, and report five-run averages.
 
 ## Environment Plan
 
@@ -207,6 +215,7 @@ P1-P3 gem5 experiments:
 - radius 3
 - compare scalar, RVV reduction, and SIMD-like RVV
 - report simulated time separately from real CPU/GPU runtime
+- keep the course CPU model unless a report section explicitly studies cache settings; do not switch to `AtomicSimpleCPU`
 
 P4 CUDA experiments:
 
@@ -214,12 +223,14 @@ P4 CUDA experiments:
 - radius 3 and 5
 - block sizes such as 8x8, 16x16, and 32x8
 - compare global-memory and shared-memory kernels
+- run each setting five times and report the average CUDA event kernel time
 
 P5 CUDA experiments:
 
 - fixed 1024x1024 image size and radius 3
 - pattern counts 1, 2, 4, 8, and 16
 - compare throughput per pattern and total runtime
+- run each setting five times and report the average CUDA event kernel time
 
 ## Error Handling And Risks
 
