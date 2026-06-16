@@ -26,4 +26,5 @@ P3/m5out/
 # Generated experiment artifacts
 results/*.csv
 results/*.txt
+results/*.log
 data/*.pgm

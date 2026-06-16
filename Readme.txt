@@ -10,11 +10,11 @@ This project implements and compares architecture-aware bilateral filter acceler
 - P5: multi-pattern CUDA implementation for batching several bilateral patterns in one run.
 
 Environment
-- gem5/RVV: use the course Docker image `weisheng505/gem5-rvv-image:v1`.
+- gem5/RVV: prefer the course Docker image `weisheng505/gem5-rvv-image:v1` when Docker containers are available. On this host, Docker Engine can be installed but containers are blocked by kernel namespace permissions, so gem5 was built locally from source at `/home/u5977862/gem5/build/RISCV/gem5.opt`.
 - CUDA: use a host CUDA installation or the course CUDA Docker image `weisheng505/cuda-env:v1`.
 - Observed GPU for CUDA runs: Tesla V100-SXM2-32GB.
 - V100 CUDA architecture flag: `sm_70`. The P4/P5 Makefiles default to `ARCH=sm_70`.
-- Bare hosts may not have Docker, RVV tools, or CUDA tools installed. RVV/gem5 work should be run inside the course gem5 container when those tools are unavailable locally.
+- Bare hosts may not have Docker, RVV tools, or CUDA tools installed. RVV/gem5 work should be run inside the course gem5 container when containers are available, or with a local gem5/RISC-V toolchain otherwise.
 
 Check the local environment:
 
@@ -40,7 +40,7 @@ make -C P3 all
 ```
 
 gem5/RVV Builds
-Start the course gem5 container, enter the workspace, and build the RISC-V binaries:
+If Docker containers are available, start the course gem5 container, enter the workspace, and build the RISC-V binaries:
 
 ```sh
 docker start -ai ca-fp-gem5
@@ -48,6 +48,12 @@ cd /workspace
 make -C P1 riscv
 make -C P2 riscv
 make -C P3 riscv
+```
+
+On this host, Docker container execution is blocked by kernel namespace restrictions, so gem5 was built locally from source. The standard local gem5 collection flow is:
+
+```sh
+./scripts/collect_gem5_results.sh
 ```
 
 CUDA Builds And Runs
@@ -83,6 +89,12 @@ The programs create generated artifacts under:
 - `results/p3_simd_like_rvv.csv`
 - `results/p4_cuda.csv`
 - `results/p5_multi_pattern.csv`
+- `results/p*_stats.txt`
+- `results/p*_gem5_stdout.txt`
+- `results/p123_host_smoke.log`
+- `results/cuda_collection.log`
+- `results/p4_ncu_basic.txt`
+- `results/p5_ncu_basic.txt`
 - `data/p1_scalar_output.pgm`
 
 The test images are deterministic generated grayscale data, so the same dimensions and parameters produce repeatable inputs without requiring external image files.
@@ -92,3 +104,4 @@ Correctness And Timing Notes
 - P4/P5 CUDA timing uses CUDA events for GPU kernel measurements. P5 reports `total_kernel_ms`, `avg_kernel_ms`, and `avg_ms_per_pattern`.
 - P1/P2/P3 host smoke timing uses C++ `chrono`.
 - gem5 simulated time is separate from real CPU/GPU runtime and should be reported separately from host or CUDA timings.
+- P1/P2/P3 programs append CSV rows when they run inside gem5 too. For simulator performance, use `results/p*_stats.txt` rather than the program's internal `host_ms` or `host_fallback_ms`.
