@@ -80,36 +80,41 @@ The arithmetic form avoids `exp()` in RVV/gem5 while keeping the same architectu
 
 ### P1-P3 gem5
 
-Final gem5/RVV runs must be completed inside the course container because this host did not have `docker` or `riscv64-linux-gnu-g++` available during final verification.
+Docker Engine 29.5.3 was installed on this host, but container execution is blocked by kernel namespace restrictions (`unshare: operation not permitted`). As a fallback, gem5 was built locally from source at `/home/u5977862/gem5/build/RISCV/gem5.opt`. The local gem5 run reports RVV enabled with `VLEN = 256 bits` and `ELEN = 64 bits`.
 
-| Part | Host smoke command | Checksum | max_abs_diff | Host timing field | gem5 status |
-| --- | --- | --- | --- | --- | --- |
-| P1 scalar | `./P1/main 32 32 3` | 6238116.209287 | N/A | `host_ms=0.241593` | Blocked on missing Docker/RISC-V toolchain. |
-| P2 RVV reduction fallback | `./P2/main 32 32` | 6238116.209287 | 0.000000 | `host_fallback_ms=0.274421` | Blocked on missing Docker/RISC-V toolchain. |
-| P3 SIMD-like RVV fallback | `./P3/main 32 32 4` | 6238116.209287 | 0.000000 | `host_fallback_ms=0.178394` | Blocked on missing Docker/RISC-V toolchain. |
+| Part | gem5 command options | Checksum | max_abs_diff | simSeconds | simInsts | cycles | CPI | D-cache miss rate |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P1 scalar | `32 32 3` | 6238116.195794 | N/A | 0.005621 | 3231709 | 11241402 | 3.478470 | 0.009360 |
+| P1 scalar | `64 64 3` | 25461956.426892 | N/A | 0.016185 | 9648134 | 32369022 | 3.354952 | 0.004001 |
+| P2 RVV reduction | `32 32` | 6238115.943961 | 0.000122 | 0.007834 | 4972814 | 15668938 | 3.150920 | 0.007982 |
+| P2 RVV reduction | `64 64` | 25461955.495364 | 0.000122 | 0.025063 | 16594926 | 50125770 | 3.020548 | 0.003477 |
+| P3 SIMD-like RVV | `32 32 2` | 6238116.195794 | 0.000000 | 0.005850 | 3440167 | 11699858 | 3.400956 | 0.014585 |
+| P3 SIMD-like RVV | `32 32 4` | 6238116.195794 | 0.000000 | 0.005770 | 3338247 | 11540228 | 3.456972 | 0.014675 |
+| P3 SIMD-like RVV | `32 32 8` | 6238116.195794 | 0.000000 | 0.005682 | 3262607 | 11364402 | 3.483227 | 0.014732 |
+| P3 SIMD-like RVV | `64 64 4` | 25461956.426892 | 0.000000 | 0.015334 | 9160653 | 30668808 | 3.347884 | 0.010826 |
 
 ### P4 CUDA
 
 | Width | Height | Radius | Block | Mode | Repeats | Checksum | max_abs_diff | avg_kernel_ms |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 512 | 512 | 3 | 8x8 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.115885 |
-| 512 | 512 | 3 | 8x8 | shared | 5 | 1637512415.620656 | 0.000061 | 0.109459 |
-| 512 | 512 | 3 | 16x16 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.112691 |
-| 512 | 512 | 3 | 16x16 | shared | 5 | 1637512415.620656 | 0.000061 | 0.107827 |
-| 1024 | 1024 | 5 | 16x16 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.774765 |
-| 1024 | 1024 | 5 | 16x16 | shared | 5 | 6550815804.927626 | 0.000076 | 0.721024 |
-| 1024 | 1024 | 5 | 32x8 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.776499 |
-| 1024 | 1024 | 5 | 32x8 | shared | 5 | 6550815804.927626 | 0.000076 | 0.720166 |
+| 512 | 512 | 3 | 8x8 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.107213 |
+| 512 | 512 | 3 | 8x8 | shared | 5 | 1637512415.620656 | 0.000061 | 0.103456 |
+| 512 | 512 | 3 | 16x16 | naive/global | 5 | 1637512415.620656 | 0.000061 | 0.107546 |
+| 512 | 512 | 3 | 16x16 | shared | 5 | 1637512415.620656 | 0.000061 | 0.103776 |
+| 1024 | 1024 | 5 | 16x16 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.706176 |
+| 1024 | 1024 | 5 | 16x16 | shared | 5 | 6550815804.927626 | 0.000076 | 0.654355 |
+| 1024 | 1024 | 5 | 32x8 | naive/global | 5 | 6550815804.927626 | 0.000076 | 0.704563 |
+| 1024 | 1024 | 5 | 32x8 | shared | 5 | 6550815804.927626 | 0.000076 | 0.656627 |
 
 ### P5 CUDA
 
 | Width | Height | Radius | Patterns | Threads/block | Repeats | Checksum | max_abs_diff | avg_kernel_ms | avg_ms_per_pattern | Total kernel ms |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1024 | 1024 | 3 | 1 | 256 | 5 | 6550831709.315681 | 0.000061 | 0.350208 | 0.350208 | 1.751040 |
-| 1024 | 1024 | 3 | 2 | 256 | 5 | 13101845648.158327 | 0.000092 | 0.666458 | 0.333229 | 3.332288 |
-| 1024 | 1024 | 3 | 4 | 256 | 5 | 26203780400.305031 | 0.000092 | 1.309933 | 0.327483 | 6.549664 |
-| 1024 | 1024 | 3 | 8 | 256 | 5 | 52407367705.564903 | 0.000092 | 2.614022 | 0.326753 | 13.070112 |
-| 1024 | 1024 | 3 | 16 | 256 | 5 | 104815167996.359741 | 0.000092 | 5.180909 | 0.323807 | 25.904545 |
+| 1024 | 1024 | 3 | 1 | 256 | 5 | 6550831709.315681 | 0.000061 | 0.315187 | 0.315187 | 1.575936 |
+| 1024 | 1024 | 3 | 2 | 256 | 5 | 13101845648.158327 | 0.000092 | 0.606144 | 0.303072 | 3.030720 |
+| 1024 | 1024 | 3 | 4 | 256 | 5 | 26203780400.305031 | 0.000092 | 1.189171 | 0.297293 | 5.945856 |
+| 1024 | 1024 | 3 | 8 | 256 | 5 | 52407367705.564903 | 0.000092 | 2.357427 | 0.294678 | 11.787136 |
+| 1024 | 1024 | 3 | 16 | 256 | 5 | 104815167996.359741 | 0.000092 | 4.695072 | 0.293442 | 23.475361 |
 
 ## Discussion And Comparison
 
