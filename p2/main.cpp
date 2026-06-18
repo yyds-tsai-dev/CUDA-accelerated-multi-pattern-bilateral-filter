@@ -4,19 +4,13 @@
 // -----------------------------------------------------------------------------
 // Part 2: RVV Vector Reduction implementation for Bilateral Filter
 //
-// This program uses the same preprocessed grayscale input as Part 1, but replaces
-// the scalar summation in each bilateral-filter window with RVV vector arithmetic
-// and RVV reduction operations.
+// Default execution:
+//   ./main
+// Optional execution:
+//   ./main <input_txt> <output_txt> [iterations]
 //
-// For each output pixel p, the bilateral filter computes
-//   numerator   = sum_q spatial(p,q) * range(I[p], I[q]) * I[q]
-//   denominator = sum_q spatial(p,q) * range(I[p], I[q])
-//   output[p]   = numerator / denominator
-//
-// The RVV kernel vectorizes the per-neighbor arithmetic and uses vfredusum.vs
-// to reduce each vector chunk.  The window has 81 elements.  Since the provided
-// gem5 RVV setting uses VLEN=256 bits, each vector chunk can process up to
-// eight FP32 elements.
+// RVV mapping:
+//   one output pixel at a time; vector lanes process the 9x9 window and reduce.
 // -----------------------------------------------------------------------------
 
 #define DEFAULT_INPUT_FILE  "../test/cyberpunk2077_in.txt"

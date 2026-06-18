@@ -4,27 +4,16 @@
 // -----------------------------------------------------------------------------
 // Part 3: SIMD-like RVV across-k parallelization for Bilateral Filter
 //
-// Part 1 computes each output pixel using scalar nested loops.
-// Part 2 vectorizes the 9x9 summation for one output pixel and uses vector
-// reduction instructions.
+// Default execution:
+//   ./main
+// Optional execution:
+//   ./main <input_txt> <output_txt> [iterations]
 //
-// Part 3 uses a different mapping: each RVV vector lane corresponds to one
-// independent output pixel.  In this implementation, the lanes process pixels
-// from the same column but from consecutive rows.  Since those pixels are
-// separated by "width" floats in memory, the kernel uses strided RVV loads and
-// stores (vlse32.v / vsse32.v).  The accumulation is SIMD-like across lanes;
-// therefore no RVV reduction instruction is used in the main kernel.
-//
-// For each output pixel p, the bilateral filter computes
-//   numerator   = sum_q spatial(p,q) * range(I[p], I[q]) * I[q]
-//   denominator = sum_q spatial(p,q) * range(I[p], I[q])
-//   output[p]   = numerator / denominator
-//
-// Range weight is approximated by basic arithmetic operations:
-//   range_weight = 1 / (1 + RANGE_ALPHA * diff * diff)
+// RVV mapping:
+//   vector lanes compute independent output pixels using strided loads/stores.
 // -----------------------------------------------------------------------------
 
-#define DEFAULT_INPUT_FILE  "../test/Fuecoco_in.txt"
+#define DEFAULT_INPUT_FILE  "../test/cyberpunk2077_in.txt"
 #define DEFAULT_OUTPUT_FILE "output/simd_rvv_out.txt"
 
 #define RADIUS 4

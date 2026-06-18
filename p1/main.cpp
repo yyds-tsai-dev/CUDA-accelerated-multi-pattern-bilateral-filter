@@ -2,20 +2,15 @@
 #include <stdlib.h>
 
 // -----------------------------------------------------------------------------
-// Part 1: Scalar baseline for Bilateral Filter
+// Part 1: Scalar baseline implementation for Bilateral Filter
 //
-// This program reads a preprocessed grayscale image from ../test/cyberpunk2077_in.txt by default.
-// The preprocessing step is not included in the measured kernel.  The measured
-// computation is the scalar bilateral filtering nested-loop workload.
+// Default execution:
+//   ./main
+// Optional execution:
+//   ./main <input_txt> <output_txt> [iterations]
 //
-// Bilateral filter:
-//   output[p] = sum_q spatial(p,q) * range(I[p],I[q]) * I[q]
-//             / sum_q spatial(p,q) * range(I[p],I[q])
-//
-// To keep the computation suitable for later RVV/CUDA versions, the range kernel
-// uses a rational approximation instead of exp():
-//   range_weight = 1 / (1 + alpha * diff * diff)
-// This uses only +, -, *, and / in the inner loop.
+// CPU mapping:
+//   one CPU thread walks all output pixels sequentially.
 // -----------------------------------------------------------------------------
 
 #define DEFAULT_INPUT_FILE  "../test/cyberpunk2077_in.txt"

@@ -31,8 +31,13 @@ From the CUDA container:
 
   cd /workspace/p5
   make clean
-  make ARCH=sm_89
+  make CUDA_ARCH=sm_89
   ./main
+
+Or use Makefile run targets:
+
+  make run-gpu CUDA_ARCH=sm_89
+  make run-cpu
 
 Custom run format
 -----------------
@@ -48,16 +53,6 @@ Memory modes:
 
   shared : row-tile shared memory with halo rows, default
   global : original global-memory-only kernel
-
-Generate PTX
-------------
-
-  make ptx ARCH=sm_89
-
-Run Nsight Compute basic profiling
-----------------------------------
-
-  make ncu ARCH=sm_89
 
 Convert output TXT to PNG
 -------------------------
