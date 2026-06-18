@@ -1,0 +1,214 @@
+{
+  "nodes": [
+    {
+      "id": "multi_cuda_out_png",
+      "label": "Multi CUDA Output PNG",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "multi_cuda_out_mushroom_cloud",
+      "label": "Mushroom Cloud Silhouette",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.93
+    },
+    {
+      "id": "multi_cuda_out_bright_core",
+      "label": "Bright Central Blast Core",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.91
+    },
+    {
+      "id": "multi_cuda_out_smoke_canopy",
+      "label": "Upper Smoke Canopy",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.9
+    },
+    {
+      "id": "multi_cuda_out_dark_background",
+      "label": "Dark Background",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.95
+    },
+    {
+      "id": "multi_cuda_out_ground_horizon_reflection",
+      "label": "Bright Ground Horizon Reflection",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.82
+    },
+    {
+      "id": "multi_cuda_out_grayscale_pixel_art",
+      "label": "Grayscale Pixelated Rendering",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.96
+    },
+    {
+      "id": "multi_cuda_out_multi_pattern_cuda_artifact",
+      "label": "Multi-pattern CUDA Output Artifact",
+      "file_type": "image",
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.86
+    }
+  ],
+  "edges": [
+    {
+      "source": "multi_cuda_out_png",
+      "target": "multi_cuda_out_mushroom_cloud",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "multi_cuda_out_png",
+      "target": "multi_cuda_out_grayscale_pixel_art",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "multi_cuda_out_mushroom_cloud",
+      "target": "multi_cuda_out_smoke_canopy",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "multi_cuda_out_mushroom_cloud",
+      "target": "multi_cuda_out_bright_core",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "multi_cuda_out_mushroom_cloud",
+      "target": "multi_cuda_out_dark_background",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "multi_cuda_out_bright_core",
+      "target": "multi_cuda_out_ground_horizon_reflection",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.74,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 0.74
+    },
+    {
+      "source": "multi_cuda_out_png",
+      "target": "multi_cuda_out_multi_pattern_cuda_artifact",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.86,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 0.86
+    },
+    {
+      "source": "multi_cuda_out_multi_pattern_cuda_artifact",
+      "target": "multi_cuda_out_grayscale_pixel_art",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "p5/output/multi_cuda_out.png",
+      "source_location": null,
+      "weight": 0.78
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "multi_cuda_out_mushroom_cloud_scene",
+      "label": "Mushroom Cloud Scene",
+      "nodes": [
+        "multi_cuda_out_mushroom_cloud",
+        "multi_cuda_out_bright_core",
+        "multi_cuda_out_smoke_canopy",
+        "multi_cuda_out_ground_horizon_reflection",
+        "multi_cuda_out_dark_background"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p5/output/multi_cuda_out.png"
+    },
+    {
+      "id": "multi_cuda_out_filtered_image_artifact",
+      "label": "Filtered Image Artifact",
+      "nodes": [
+        "multi_cuda_out_png",
+        "multi_cuda_out_grayscale_pixel_art",
+        "multi_cuda_out_multi_pattern_cuda_artifact"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "p5/output/multi_cuda_out.png"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

@@ -1,0 +1,201 @@
+{
+  "nodes": [
+    {
+      "id": "cyberpunk2077_source_png",
+      "label": "Cyberpunk 2077 Source PNG",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "1000x666 RGB PNG",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "cyberpunk2077_bilateral_filter_test_input",
+      "label": "Bilateral Filter Test Input Image",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.85
+    },
+    {
+      "id": "cyberpunk2077_space_view_scene",
+      "label": "Anime Space View Scene",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "cyberpunk2077_earth_from_lunar_surface",
+      "label": "Earth Viewed From Lunar Surface",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "upper and middle frame",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.95
+    },
+    {
+      "id": "cyberpunk2077_two_seated_figures",
+      "label": "Two Seated Figures",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "lower center frame",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "cyberpunk2077_lunar_surface_foreground",
+      "label": "Rocky Lunar Surface Foreground",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "bottom frame",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.95
+    },
+    {
+      "id": "cyberpunk2077_high_contrast_composition",
+      "label": "High-Contrast Space Composition",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.95
+    },
+    {
+      "id": "cyberpunk2077_bright_earth_dark_space_boundary",
+      "label": "Bright Earth and Dark Space Boundary",
+      "file_type": "image",
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "upper frame",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.9
+    }
+  ],
+  "edges": [
+    {
+      "source": "cyberpunk2077_source_png",
+      "target": "cyberpunk2077_bilateral_filter_test_input",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "cyberpunk2077_source_png",
+      "target": "cyberpunk2077_space_view_scene",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_space_view_scene",
+      "target": "cyberpunk2077_earth_from_lunar_surface",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "upper and middle frame",
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_space_view_scene",
+      "target": "cyberpunk2077_two_seated_figures",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "lower center frame",
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_space_view_scene",
+      "target": "cyberpunk2077_lunar_surface_foreground",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "bottom frame",
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_space_view_scene",
+      "target": "cyberpunk2077_high_contrast_composition",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_high_contrast_composition",
+      "target": "cyberpunk2077_bright_earth_dark_space_boundary",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": "upper frame",
+      "weight": 1.0
+    },
+    {
+      "source": "cyberpunk2077_bilateral_filter_test_input",
+      "target": "cyberpunk2077_bright_earth_dark_space_boundary",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "raw/cyberpunk2077.png",
+      "source_location": null,
+      "weight": 0.8
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "cyberpunk2077_space_scene_composition",
+      "label": "Space Scene Composition",
+      "nodes": [
+        "cyberpunk2077_space_view_scene",
+        "cyberpunk2077_earth_from_lunar_surface",
+        "cyberpunk2077_two_seated_figures",
+        "cyberpunk2077_lunar_surface_foreground",
+        "cyberpunk2077_high_contrast_composition"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "raw/cyberpunk2077.png"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

@@ -1,0 +1,107 @@
+{
+  "nodes": [
+    {
+      "id": "simd_rvv_out_image_output",
+      "label": "SIMD RVV Output Image",
+      "file_type": "image",
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "simd_rvv_out_cartoon_character_foreground",
+      "label": "Grayscale Cartoon Character Foreground",
+      "file_type": "image",
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "simd_rvv_out_black_background",
+      "label": "Black Background",
+      "file_type": "image",
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "simd_rvv_out_smoothed_grayscale_result",
+      "label": "Smoothed Grayscale Visual Result",
+      "file_type": "image",
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "simd_rvv_out_image_output",
+      "target": "simd_rvv_out_cartoon_character_foreground",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "simd_rvv_out_image_output",
+      "target": "simd_rvv_out_black_background",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "simd_rvv_out_image_output",
+      "target": "simd_rvv_out_smoothed_grayscale_result",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "simd_rvv_out_smoothed_grayscale_result",
+      "target": "simd_rvv_out_cartoon_character_foreground",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p3/output/simd_rvv_out.png",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "simd_rvv_output_visual_composition",
+      "label": "SIMD RVV Output Visual Composition",
+      "nodes": [
+        "simd_rvv_out_image_output",
+        "simd_rvv_out_cartoon_character_foreground",
+        "simd_rvv_out_black_background"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p3/output/simd_rvv_out.png"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

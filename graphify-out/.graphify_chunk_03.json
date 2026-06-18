@@ -1,0 +1,169 @@
+{
+  "nodes": [
+    {
+      "id": "p1_scalar_out_png",
+      "label": "P1 Scalar Output PNG",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "p1_scalar_grayscale_filtered_result",
+      "label": "Grayscale Scalar Filter Result",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "p1_scalar_low_resolution_rendering",
+      "label": "Low-Resolution 8-Bit Grayscale Rendering",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": "160x107 grayscale PNG",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "p1_scalar_high_contrast_dark_scene",
+      "label": "High-Contrast Dark Scene",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 1.0
+    },
+    {
+      "id": "p1_scalar_bright_central_plume",
+      "label": "Bright Central Plume",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.9
+    },
+    {
+      "id": "p1_scalar_horizon_ground_band",
+      "label": "Horizon or Ground Band",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.85
+    },
+    {
+      "id": "p1_scalar_mushroom_cloud_like_form",
+      "label": "Mushroom-Cloud-Like Form",
+      "file_type": "image",
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "confidence_score": 0.3
+    }
+  ],
+  "edges": [
+    {
+      "source": "p1_scalar_out_png",
+      "target": "p1_scalar_grayscale_filtered_result",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "p1_scalar_grayscale_filtered_result",
+      "target": "p1_scalar_low_resolution_rendering",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": "160x107 grayscale PNG",
+      "weight": 1.0
+    },
+    {
+      "source": "p1_scalar_grayscale_filtered_result",
+      "target": "p1_scalar_high_contrast_dark_scene",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "p1_scalar_high_contrast_dark_scene",
+      "target": "p1_scalar_bright_central_plume",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "p1_scalar_high_contrast_dark_scene",
+      "target": "p1_scalar_horizon_ground_band",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "p1_scalar_bright_central_plume",
+      "target": "p1_scalar_mushroom_cloud_like_form",
+      "relation": "conceptually_related_to",
+      "confidence": "AMBIGUOUS",
+      "confidence_score": 0.25,
+      "source_file": "p1/output/scalar_out.png",
+      "source_location": null,
+      "weight": 0.25
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "p1_scalar_filtered_grayscale_composition",
+      "label": "Filtered Grayscale Composition",
+      "nodes": [
+        "p1_scalar_grayscale_filtered_result",
+        "p1_scalar_low_resolution_rendering",
+        "p1_scalar_high_contrast_dark_scene",
+        "p1_scalar_bright_central_plume",
+        "p1_scalar_horizon_ground_band"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "p1/output/scalar_out.png"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
