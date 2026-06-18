@@ -1,30 +1,71 @@
-# MacOS specific files
-.DS_Store
-Icon?
+# Local environments and package caches
+.venv/
+.uv-cache/
+.cache/
 
-# Temporary files
-tmp/
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Local worktrees
-.worktrees/
+# C/C++/CUDA build byproducts
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.out
+*.ptx
+*.cubin
+*.fatbin
+*.sass
+*.ii
+*.i
+*.s
+compile_commands.json
 
-# Build outputs
+# Project binaries
 P1/main
 P2/main
 P3/main
 P4/main
 P5/main
-*.o
-*.ptx
+p1/main
+p2/main
+p3/main
+p4/main
+p4/main_cpu
+p5/main
+p5/main_cpu
 
 # gem5 outputs
 m5out/
-P1/m5out/
-P2/m5out/
-P3/m5out/
+*/m5out/
 
 # Generated experiment artifacts
-results/*.csv
-results/*.txt
-results/*.log
-data/*.pgm
+results/*
+!results/.gitkeep
+data/*
+!data/.gitkeep
+
+# Local analysis and extraction artifacts
+tmp/
+graphify-out/
+.graphify_*
+
+# Local worktrees and agent/editor metadata
+.worktrees/
+AGENTS.md
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Icon?
+Thumbs.db
