@@ -1,5 +1,0 @@
-word/media/image1.png
-word/media/image2.png
-word/media/image3.png
-word/media/image4.png
-word/media/image5.png
