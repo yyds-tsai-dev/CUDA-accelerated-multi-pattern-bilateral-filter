@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cmath>
+#include <cstring>
 #include <vector>
 #include <fstream>
 #include <algorithm>
@@ -16,7 +17,7 @@
 // Default execution:
 //   ./main
 // Optional execution:
-//   ./main <input_txt> <output_txt_pattern0> [iterations] [patterns] [threads_per_block]
+//   ./main <input_txt> <output_txt_pattern0> [iterations] [patterns] [threads_per_block] [shared|global]
 //
 // CUDA mapping:
 //   blockIdx.x / threadIdx.x -> output pixel index
@@ -170,6 +171,11 @@ static void generate_patterns_from_base(
     }
 }
 
+static int compute_shared_rows(int width, int threads_per_block) {
+    const int rows_touched_by_block = (threads_per_block + width - 1) / width + 1;
+    return rows_touched_by_block + 2 * MAX_RADIUS;
+}
+
 __global__ void bilateral_filter_multi_cuda_kernel(
     const float *src_all,
     float *dst_all,
@@ -202,6 +208,69 @@ __global__ void bilateral_filter_multi_cuda_kernel(
         if (ny >= height) ny = height - 1;
 
         float v = src_all[base + ny * width + nx];
+        float diff = v - center;
+        float range_w = 1.0f / (1.0f + RANGE_ALPHA * diff * diff);
+        float w = c_spatial[k] * range_w;
+
+        sum_w += w;
+        sum_v += w * v;
+    }
+
+    dst_all[base + pixel_idx] = (sum_w > 0.0f) ? (sum_v / sum_w) : center;
+}
+
+__global__ void bilateral_filter_multi_shared_cuda_kernel(
+    const float *src_all,
+    float *dst_all,
+    int width,
+    int height,
+    int image_size,
+    int window_elems
+) {
+    extern __shared__ float tile[];
+
+    int pixel_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int pattern_idx = blockIdx.y;
+    int first_idx = blockIdx.x * blockDim.x;
+    int last_idx = min(first_idx + blockDim.x - 1, image_size - 1);
+    int first_y = first_idx / width;
+    int last_y = last_idx / width;
+    int tile_origin_y = first_y - MAX_RADIUS;
+    int shared_rows = (last_y - first_y + 1) + 2 * MAX_RADIUS;
+    int tile_elems = shared_rows * width;
+    size_t base = (size_t)pattern_idx * image_size;
+
+    for (int t = threadIdx.x; t < tile_elems; t += blockDim.x) {
+        int local_y = t / width;
+        int x = t - local_y * width;
+        int gy = tile_origin_y + local_y;
+        if (gy < 0) gy = 0;
+        if (gy >= height) gy = height - 1;
+        tile[t] = src_all[base + gy * width + x];
+    }
+
+    __syncthreads();
+
+    if (pixel_idx >= image_size) return;
+
+    int x = pixel_idx % width;
+    int y = pixel_idx / width;
+    float center = src_all[base + pixel_idx];
+
+    float sum_w = 0.0f;
+    float sum_v = 0.0f;
+
+    for (int k = 0; k < window_elems; k++) {
+        int nx = x + c_dxs[k];
+        int ny = y + c_dys[k];
+
+        if (nx < 0) nx = 0;
+        if (nx >= width) nx = width - 1;
+        if (ny < 0) ny = 0;
+        if (ny >= height) ny = height - 1;
+
+        int local_y = ny - tile_origin_y;
+        float v = tile[local_y * width + nx];
         float diff = v - center;
         float range_w = 1.0f / (1.0f + RANGE_ALPHA * diff * diff);
         float w = c_spatial[k] * range_w;
@@ -246,6 +315,8 @@ static void print_final_summary(
     int threads_per_block,
     int grid_x,
     int grid_y,
+    const char *memory_mode,
+    size_t shared_memory_bytes,
     float gpu_ms,
     double gpu_sum_all,
     double gpu_mean_all,
@@ -310,6 +381,8 @@ static void print_final_summary(
     std::printf("threads_per_block            = %d\n", threads_per_block);
     std::printf("cuda_grid_x                  = %d\n", grid_x);
     std::printf("cuda_grid_y                  = %d\n", grid_y);
+    std::printf("memory_mode                  = %s\n", memory_mode);
+    std::printf("shared_memory_bytes_per_blk  = %zu\n", shared_memory_bytes);
     std::printf("active_threads_per_iter      = %lld\n", total_pixels_all_patterns);
     std::printf("launched_threads_per_iter    = %lld\n", launched_threads_per_iteration);
     std::printf("timing_method_gpu            = cudaEvent kernel-only timing\n");
@@ -363,10 +436,21 @@ int main(int argc, char **argv) {
     int iterations          = (argc >= 4) ? std::atoi(argv[3]) : DEFAULT_ITERATIONS;
     int patterns            = (argc >= 5) ? std::atoi(argv[4]) : DEFAULT_PATTERNS;
     int threads_per_block   = (argc >= 6) ? std::atoi(argv[5]) : DEFAULT_THREADS_PER_BLOCK;
+    const char *memory_mode = (argc >= 7) ? argv[6] : "shared";
+    bool use_shared_memory = true;
 
     if (iterations <= 0) iterations = DEFAULT_ITERATIONS;
     if (patterns <= 0) patterns = DEFAULT_PATTERNS;
     if (threads_per_block <= 0 || threads_per_block > 1024) threads_per_block = DEFAULT_THREADS_PER_BLOCK;
+    if (std::strcmp(memory_mode, "shared") == 0) {
+        use_shared_memory = true;
+    } else if (std::strcmp(memory_mode, "global") == 0 || std::strcmp(memory_mode, "naive") == 0) {
+        use_shared_memory = false;
+        memory_mode = "global";
+    } else {
+        std::fprintf(stderr, "ERROR: memory mode must be shared or global.\n");
+        return 1;
+    }
 
     int width = 0;
     int height = 0;
@@ -405,6 +489,23 @@ int main(int argc, char **argv) {
     const int grid_y = patterns;
     dim3 block(threads_per_block);
     dim3 grid(grid_x, grid_y);
+    size_t shared_memory_bytes = 0;
+    if (use_shared_memory) {
+        const int shared_rows = compute_shared_rows(width, threads_per_block);
+        shared_memory_bytes = (size_t)width * shared_rows * sizeof(float);
+
+        int device = 0;
+        cudaDeviceProp prop;
+        cudaCheck(cudaGetDevice(&device), "cudaGetDevice");
+        cudaCheck(cudaGetDeviceProperties(&prop, device), "cudaGetDeviceProperties");
+        if (shared_memory_bytes > (size_t)prop.sharedMemPerBlock) {
+            std::printf("WARNING: requested shared memory %zu bytes exceeds device limit %zu bytes; using global mode.\n",
+                        shared_memory_bytes, (size_t)prop.sharedMemPerBlock);
+            use_shared_memory = false;
+            memory_mode = "global";
+            shared_memory_bytes = 0;
+        }
+    }
 
     cudaEvent_t ev_st;
     cudaEvent_t ev_ed;
@@ -414,7 +515,11 @@ int main(int argc, char **argv) {
     cudaCheck(cudaEventRecord(ev_st), "cudaEventRecord start");
 
     for (int it = 0; it < iterations; it++) {
-        bilateral_filter_multi_cuda_kernel<<<grid, block>>>(d_a, d_b, width, height, image_size, window_elems);
+        if (use_shared_memory) {
+            bilateral_filter_multi_shared_cuda_kernel<<<grid, block, shared_memory_bytes>>>(d_a, d_b, width, height, image_size, window_elems);
+        } else {
+            bilateral_filter_multi_cuda_kernel<<<grid, block>>>(d_a, d_b, width, height, image_size, window_elems);
+        }
         cudaCheck(cudaGetLastError(), "kernel launch");
         std::swap(d_a, d_b);
     }
@@ -444,6 +549,7 @@ int main(int argc, char **argv) {
 
     print_final_summary(input_file, output_file, width, height, iterations,
                         patterns, threads_per_block, grid_x, grid_y,
+                        memory_mode, shared_memory_bytes,
                         gpu_ms,
                         gpu_sum_all, gpu_mean_all, gpu_mean_square_all,
                         gpu_checksum_all,

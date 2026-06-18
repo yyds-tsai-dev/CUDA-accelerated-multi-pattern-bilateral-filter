@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <cstring>
 #include <cuda_runtime.h>
 
 // -----------------------------------------------------------------------------
@@ -13,7 +14,7 @@
 // Default execution:
 //   ./main
 // Optional execution:
-//   ./main <input_txt> <output_txt> [iterations] [threads_per_block]
+//   ./main <input_txt> <output_txt> [iterations] [threads_per_block] [shared|global]
 //
 // CUDA mapping:
 //   one CUDA thread computes one output pixel.
@@ -86,6 +87,11 @@ static int load_image_txt(const char *path, float **image, int *width, int *heig
     return 1;
 }
 
+static int compute_shared_rows(int width, int threads_per_block) {
+    const int rows_touched_by_block = (threads_per_block + width - 1) / width + 1;
+    return rows_touched_by_block + 2 * RADIUS;
+}
+
 static void write_output_txt(const char *path, const float *image, int width, int height) {
     FILE *fp = std::fopen(path, "w");
     if (!fp) {
@@ -153,6 +159,60 @@ __global__ void bilateral_filter_cuda_kernel(
     dst[idx] = weighted_sum / weight_sum;
 }
 
+__global__ void bilateral_filter_shared_cuda_kernel(
+    const float *src,
+    float *dst,
+    int width,
+    int height,
+    int total_pixels
+) {
+    extern __shared__ float tile[];
+
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const int first_idx = blockIdx.x * blockDim.x;
+    const int last_idx = min(first_idx + blockDim.x - 1, total_pixels - 1);
+    const int first_y = first_idx / width;
+    const int last_y = last_idx / width;
+    const int tile_origin_y = first_y - RADIUS;
+    const int shared_rows = (last_y - first_y + 1) + 2 * RADIUS;
+    const int tile_elems = shared_rows * width;
+
+    for (int t = threadIdx.x; t < tile_elems; t += blockDim.x) {
+        const int local_y = t / width;
+        const int x = t - local_y * width;
+        const int gy = clamp_int_device(tile_origin_y + local_y, 0, height - 1);
+        tile[t] = src[gy * width + x];
+    }
+
+    __syncthreads();
+
+    if (idx >= total_pixels) return;
+
+    const int x = idx % width;
+    const int y = idx / width;
+    const float center = src[idx];
+
+    float weighted_sum = 0.0f;
+    float weight_sum = 0.0f;
+
+    #pragma unroll
+    for (int k = 0; k < KERNEL_ELEMS; k++) {
+        const int nx = clamp_int_device(x + c_dxs[k], 0, width - 1);
+        const int ny = clamp_int_device(y + c_dys[k], 0, height - 1);
+        const int local_y = ny - tile_origin_y;
+        const float neighbor = tile[local_y * width + nx];
+
+        const float diff = neighbor - center;
+        const float range_weight = 1.0f / (1.0f + RANGE_ALPHA * diff * diff);
+        const float weight = c_spatial[k] * range_weight;
+
+        weighted_sum += weight * neighbor;
+        weight_sum += weight;
+    }
+
+    dst[idx] = weighted_sum / weight_sum;
+}
+
 static unsigned long long checksum_u8_from_float(const float *image, int n) {
     unsigned long long hash = 1469598103934665603ULL;
     for (int i = 0; i < n; i++) {
@@ -195,6 +255,8 @@ static void print_final_summary(
     int iterations,
     int threads_per_block,
     int cuda_blocks,
+    const char *memory_mode,
+    size_t shared_memory_bytes,
     float gpu_ms,
     double gpu_sum,
     double gpu_mean,
@@ -239,6 +301,8 @@ static void print_final_summary(
     std::printf("thread_mapping               = one CUDA thread = one output pixel\n");
     std::printf("threads_per_block            = %d\n", threads_per_block);
     std::printf("cuda_blocks                  = %d\n", cuda_blocks);
+    std::printf("memory_mode                  = %s\n", memory_mode);
+    std::printf("shared_memory_bytes_per_blk  = %zu\n", shared_memory_bytes);
     std::printf("active_threads_per_iter      = %d\n", n);
     std::printf("launched_threads_per_iter    = %lld\n", launched_threads_per_iteration);
     std::printf("timing_method_gpu            = cudaEvent kernel-only timing\n");
@@ -287,11 +351,25 @@ int main(int argc, char **argv) {
     const char *output_file = DEFAULT_OUTPUT_FILE;
     int iterations = DEFAULT_ITERATIONS;
     int threads_per_block = DEFAULT_THREADS_PER_BLOCK;
+    const char *memory_mode = "shared";
+    bool use_shared_memory = true;
 
     if (argc >= 2) input_file = argv[1];
     if (argc >= 3) output_file = argv[2];
     if (argc >= 4) iterations = std::atoi(argv[3]);
     if (argc >= 5) threads_per_block = std::atoi(argv[4]);
+    if (argc >= 6) {
+        memory_mode = argv[5];
+        if (std::strcmp(memory_mode, "shared") == 0) {
+            use_shared_memory = true;
+        } else if (std::strcmp(memory_mode, "global") == 0 || std::strcmp(memory_mode, "naive") == 0) {
+            use_shared_memory = false;
+            memory_mode = "global";
+        } else {
+            std::printf("ERROR: memory mode must be shared or global.\n");
+            return 1;
+        }
+    }
 
     if (iterations <= 0) {
         std::printf("ERROR: iterations must be positive.\n");
@@ -329,6 +407,23 @@ int main(int argc, char **argv) {
     CUDA_CHECK(cudaMemset(d_b, 0, bytes));
 
     const int cuda_blocks = (n + threads_per_block - 1) / threads_per_block;
+    size_t shared_memory_bytes = 0;
+    if (use_shared_memory) {
+        const int shared_rows = compute_shared_rows(width, threads_per_block);
+        shared_memory_bytes = (size_t)width * shared_rows * sizeof(float);
+
+        int device = 0;
+        cudaDeviceProp prop;
+        CUDA_CHECK(cudaGetDevice(&device));
+        CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
+        if (shared_memory_bytes > (size_t)prop.sharedMemPerBlock) {
+            std::printf("WARNING: requested shared memory %zu bytes exceeds device limit %zu bytes; using global mode.\n",
+                        shared_memory_bytes, (size_t)prop.sharedMemPerBlock);
+            use_shared_memory = false;
+            memory_mode = "global";
+            shared_memory_bytes = 0;
+        }
+    }
 
     cudaEvent_t start;
     cudaEvent_t stop;
@@ -339,7 +434,11 @@ int main(int argc, char **argv) {
     float *d_src = d_a;
     float *d_dst = d_b;
     for (int iter = 0; iter < iterations; iter++) {
-        bilateral_filter_cuda_kernel<<<cuda_blocks, threads_per_block>>>(d_src, d_dst, width, height, n);
+        if (use_shared_memory) {
+            bilateral_filter_shared_cuda_kernel<<<cuda_blocks, threads_per_block, shared_memory_bytes>>>(d_src, d_dst, width, height, n);
+        } else {
+            bilateral_filter_cuda_kernel<<<cuda_blocks, threads_per_block>>>(d_src, d_dst, width, height, n);
+        }
         CUDA_CHECK(cudaGetLastError());
         float *tmp = d_src;
         d_src = d_dst;
@@ -378,6 +477,8 @@ int main(int argc, char **argv) {
         iterations,
         threads_per_block,
         cuda_blocks,
+        memory_mode,
+        shared_memory_bytes,
         gpu_ms,
         gpu_sum,
         gpu_mean,

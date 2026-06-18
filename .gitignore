@@ -1,0 +1,45 @@
+# Local environments and package caches
+.venv/
+.uv-cache/
+.cache/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# CUDA/C/C++ build byproducts
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.out
+*.ptx
+*.cubin
+*.fatbin
+*.sass
+*.ii
+*.i
+*.s
+compile_commands.json
+
+# Local analysis and extraction artifacts
+tmp/
+graphify-out/
+.graphify_*
+
+# Local agent/editor metadata
+AGENTS.md
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db

@@ -21,6 +21,7 @@ Default parameters
 iterations         = 3
 patterns           = 32
 threads per block  = 256
+memory mode        = shared
 filter radius      = 4
 window size        = 9 x 9 = 81
 
@@ -36,11 +37,17 @@ From the CUDA container:
 Custom run format
 -----------------
 
-  ./main <input_txt> <output_txt> [iterations] [patterns] [threads_per_block]
+  ./main <input_txt> <output_txt> [iterations] [patterns] [threads_per_block] [shared|global]
 
 Example:
 
-  ./main ../test/cyberpunk2077_in.txt output/multi_cuda_out.txt 3 32 256
+  ./main ../test/cyberpunk2077_in.txt output/multi_cuda_out.txt 3 32 256 shared
+  ./main ../test/cyberpunk2077_in.txt output/multi_cuda_out_global.txt 3 32 256 global
+
+Memory modes:
+
+  shared : row-tile shared memory with halo rows, default
+  global : original global-memory-only kernel
 
 Generate PTX
 ------------
@@ -62,6 +69,8 @@ Notes for report
 ----------------
 - Part 5 processes multiple independent input patterns on the GPU.
 - The y dimension of the CUDA grid corresponds to the pattern index.
+- The default kernel uses shared memory to cache the rows touched by each
+  pixel block plus halo rows for the 9 x 9 window.
 - This usually improves GPU utilization compared with Part 4 because more
   independent threads/warps are launched.
 - The program reports CPU multi-pattern time, GPU multi-pattern kernel time,
